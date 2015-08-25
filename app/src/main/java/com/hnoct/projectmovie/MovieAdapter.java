@@ -40,6 +40,7 @@ public class MovieAdapter extends BaseAdapter {
 
     public void clear() {
         movieArray.clear();
+        notifyDataSetChanged();
     }
 
     public void add(Movie movie) {

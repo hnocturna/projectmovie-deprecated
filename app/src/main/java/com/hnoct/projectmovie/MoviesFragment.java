@@ -1,5 +1,7 @@
 package com.hnoct.projectmovie;
 
+import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -9,10 +11,17 @@ import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.GridView;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,6 +31,10 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -33,8 +46,15 @@ import org.json.JSONObject;
  */
 public class MoviesFragment extends Fragment {
     MovieAdapter mThumbnailAdapter;
+    List<Movie> moviesArray;
+    String sortMode;
 
     public MoviesFragment() {
+        setHasOptionsMenu(true);
+        Activity activity = getActivity();
+        if (activity != null && isAdded()) {
+            sortMode = getResources().getString(R.string.sort_dialog_popularity);
+        }
 
     }
 
@@ -73,9 +93,79 @@ public class MoviesFragment extends Fragment {
         return rootView;
     }
 
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        inflater.inflate(R.menu.menu_main, menu);
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if (id == R.id.action_sort) {
+            final Dialog dialog = new Dialog(getActivity());
+            dialog.setTitle(getString(R.string.sort_dialog_title));
+            dialog.setContentView(R.layout.sort_dialog);
+
+            final RadioGroup sortRadioGroup = (RadioGroup) dialog.findViewById(R.id.sort_dialog_radiogroup);
+            final RadioButton popularityRadio = (RadioButton) dialog.findViewById(R.id.sort_dialog_popularity_radio);
+            final RadioButton ratingRadio = (RadioButton) dialog.findViewById(R.id.sort_dialog_rating_radio);
+            final Button sortButton = (Button) dialog.findViewById(R.id.sort_dialog_sort_button);
+
+            if (sortMode == null || sortMode.equals(getString(R.string.sort_dialog_popularity))) {
+                sortRadioGroup.check(R.id.sort_dialog_popularity_radio);
+            } else {
+                sortRadioGroup.check(R.id.sort_dialog_rating_radio);
+            }
+
+            sortButton.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    if (sortRadioGroup.getCheckedRadioButtonId() == R.id.sort_dialog_popularity_radio) {
+                        sortMode = getString(R.string.sort_dialog_popularity);
+                        mThumbnailAdapter.clear();
+                        for (Movie movie : moviesArray) {
+                            mThumbnailAdapter.add(movie);
+                        }
+                    } else if (sortRadioGroup.getCheckedRadioButtonId() == R.id.sort_dialog_rating_radio) {
+                        sortMode = getString(R.string.sort_dialog_rating);
+                        Map<Double, Movie[]> popularityMap = new TreeMap<>(Collections.reverseOrder());
+                        mThumbnailAdapter.clear();
+                        for (Movie movie : moviesArray) {
+                            if (popularityMap.get(Double.parseDouble(movie.getRating())) == null) {
+                                popularityMap.put(Double.parseDouble(movie.getRating()), new Movie[] {movie});
+                            } else {
+                                Movie[] tempMovieArray = popularityMap.get(Double.parseDouble(movie.getRating()));
+                                Movie[] newTempMovieArray = new Movie[tempMovieArray.length + 1];
+                                for (int i = 0; i < tempMovieArray.length; i++) {
+                                    newTempMovieArray[i] = tempMovieArray[i];
+                                }
+                                newTempMovieArray[newTempMovieArray.length -1] = movie;
+                                popularityMap.put(Double.parseDouble(movie.getRating()), newTempMovieArray);
+                            }
+                        }
+                        for (Movie[] movieArray : popularityMap.values()) {
+                            for (Movie movie : movieArray) {
+                                mThumbnailAdapter.add(movie);
+                            }
+
+                        }
+                    }
+                    dialog.dismiss();
+                }
+            });
+
+
+            dialog.show();
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
     /*
-    * Fetches the movie posters from The MovieDB and returns an array of posters to display on the MainActivity
-     */
+            * Fetches the movie posters from The MovieDB and returns an array of posters to display on the MainActivity
+             */
     private class FetchMoviePosters extends AsyncTask<Void, Void, Movie[]> {
 
         private Movie[] getMoviesFromJson(String movieJsonStr) throws JSONException {
@@ -283,8 +373,10 @@ public class MoviesFragment extends Fragment {
         @Override
         protected void onPostExecute(Movie[] movies) {
             mThumbnailAdapter.clear();
+            moviesArray = new ArrayList<>();
             if (movies != null) {
                 for (Movie movie: movies) {
+                    moviesArray.add(movie);
                     mThumbnailAdapter.add(movie);
                 }
             }

@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.support.v4.app.Fragment;
 import android.os.Bundle;
 import android.util.Log;
@@ -34,6 +35,15 @@ public class MovieDetailsFragment extends Fragment {
     String LOG_TAG = MovieDetailsFragment.class.getSimpleName();
     Movie movie;
 
+    // Initialize the views that need to be populated. These are global variables such that the
+    // FetchMovieImages method can populate them if need be.
+    ImageView movieBackdropIv;
+    ImageView moviePosterIv;
+    TextView movieTitleTv;
+    TextView movieReleaseTv;
+    TextView movieRatingTv;
+    TextView movieOverviewTv;
+
     public MovieDetailsFragment() {
 
     }
@@ -50,6 +60,7 @@ public class MovieDetailsFragment extends Fragment {
 
         if (extras.getParcelable("movie") != null) {
             movie = extras.getParcelable("movie");
+            movie.addThumbnail((Bitmap) extras.getParcelable("thumbnail"));
         } else {
             // If no is passed to this activity, show a toast indicating and end the Activity
             Toast toast;
@@ -71,25 +82,29 @@ public class MovieDetailsFragment extends Fragment {
         final String movieReleaseDate = movie.getReleaseDate();
         final String movieRating = movie.getRating();
         final int movieId = movie.getMovieId();
+        final Bitmap moviePoster = movie.getThumbnail();
 
         // Initialize the layout items to be populated
-        ImageView movieBackdropIv = (ImageView) rootView.findViewById(R.id.movie_backdrop);
-        ImageView moviePosterIv = (ImageView) rootView.findViewById(R.id.movie_poster);
-        TextView movieTitleTv = (TextView) rootView.findViewById(R.id.movie_title);
-        TextView movieReleaseTv = (TextView) rootView.findViewById(R.id.movie_release);
-        TextView movieRatingTv = (TextView) rootView.findViewById(R.id.movie_rating);
-        TextView movieOverviewTv = (TextView) rootView.findViewById(R.id.movie_overview);
+        movieBackdropIv = (ImageView) rootView.findViewById(R.id.movie_backdrop);
+        moviePosterIv = (ImageView) rootView.findViewById(R.id.movie_poster);
+        movieTitleTv = (TextView) rootView.findViewById(R.id.movie_title);
+        movieReleaseTv = (TextView) rootView.findViewById(R.id.movie_release);
+        movieRatingTv = (TextView) rootView.findViewById(R.id.movie_rating);
+        movieOverviewTv = (TextView) rootView.findViewById(R.id.movie_overview);
 
         // Populate the views with the data from the movie object
         movieTitleTv.setText(movieTitle);
         movieReleaseTv.setText(movieReleaseDate);
         movieRatingTv.setText(movieRating);
         movieOverviewTv.setText(movieOverview);
+        moviePosterIv.setImageBitmap(moviePoster);
+
+        new FetchMovieImages().execute(movieId);
 
         return rootView;
     }
 
-    private class FetchMovieImages extends AsyncTask<String, Void, Bitmap[]> {
+    private class FetchMovieImages extends AsyncTask<Integer, Void, Bitmap[]> {
         String LOG_TAG = FetchMovieImages.class.getSimpleName();
 
         private Bitmap[] getMovieImages(String imageJsonStr) throws JSONException {
@@ -145,14 +160,15 @@ public class MovieDetailsFragment extends Fragment {
         }
 
         @Override
-        protected Bitmap[] doInBackground(String... params) {
+        protected Bitmap[] doInBackground(Integer... params) {
             // Variables declared outside of the try/catch block so they can be used in the finally
             // block
             HttpURLConnection urlConnection = null;
             BufferedReader reader = null;
 
             // Variables used to build the Uri and download the poster images and backdrop
-            String movieId = params[0];
+            int movieId = params[0];
+            String movieIdStr = Integer.toString(movieId);
 
             // Variable to hold the JSON data downloaded from the website
             String imageJsonStr = null;
@@ -168,7 +184,7 @@ public class MovieDetailsFragment extends Fragment {
                 // poster and backdrop
                 Uri builtUri = Uri.parse(TMD_BASE_URL)
                         .buildUpon()
-                        .appendPath(movieId)
+                        .appendPath(movieIdStr)
                         .appendPath(TMD_IMAGES)
                         .appendQueryParameter(TMD_API_PARAM, API_KEY)
                         .build();
@@ -230,7 +246,18 @@ public class MovieDetailsFragment extends Fragment {
 
         @Override
         protected void onPostExecute(Bitmap[] bitmaps) {
-            
+            if (bitmaps != null) {
+                Bitmap movieBackdrop = bitmaps[0];
+                movieBackdropIv.setImageBitmap(movieBackdrop);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+                    movieBackdropIv.setImageAlpha(100);
+                } else {
+                    movieBackdropIv.setAlpha(100);
+                }
+
+            } else {
+                Log.d(LOG_TAG, "No backdrop image found");
+            }
             super.onPostExecute(bitmaps);
         }
     }
