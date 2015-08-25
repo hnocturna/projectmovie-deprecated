@@ -95,7 +95,7 @@ public class MovieDetailsFragment extends Fragment {
         // Populate the views with the data from the movie object
         movieTitleTv.setText(movieTitle);
         movieReleaseTv.setText(movieReleaseDate);
-        movieRatingTv.setText(movieRating);
+        movieRatingTv.setText("Rating: " + movieRating);
         movieOverviewTv.setText(movieOverview);
         moviePosterIv.setImageBitmap(moviePoster);
 
