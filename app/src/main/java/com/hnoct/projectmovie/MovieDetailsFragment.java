@@ -250,9 +250,9 @@ public class MovieDetailsFragment extends Fragment {
                 Bitmap movieBackdrop = bitmaps[0];
                 movieBackdropIv.setImageBitmap(movieBackdrop);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                    movieBackdropIv.setImageAlpha(100);
+                    movieBackdropIv.setImageAlpha(60);
                 } else {
-                    movieBackdropIv.setAlpha(100);
+                    movieBackdropIv.setAlpha(60);
                 }
 
             } else {
